@@ -1,0 +1,21 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景圆形 -->
+  <circle cx="64" cy="64" r="60" fill="#4285F4" stroke="#1976D2" stroke-width="2"/>
+  
+  <!-- 滚动箭头 -->
+  <g fill="white">
+    <!-- 向下箭头1 -->
+    <path d="M64 35 L80 55 L68 55 L68 65 L60 65 L60 55 L48 55 Z"/>
+    <!-- 向下箭头2 -->
+    <path d="M64 55 L80 75 L68 75 L68 85 L60 85 L60 75 L48 75 Z"/>
+    <!-- 向下箭头3 (更小，表示连续) -->
+    <path d="M64 75 L76 90 L70 90 L70 95 L58 95 L58 90 L52 90 Z"/>
+  </g>
+  
+  <!-- 速度指示线 -->
+  <g stroke="white" stroke-width="2" fill="none">
+    <line x1="25" y1="45" x2="35" y2="45"/>
+    <line x1="25" y1="55" x2="40" y2="55"/>
+    <line x1="25" y1="65" x2="45" y2="65"/>
+  </g>
+</svg>

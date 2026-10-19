@@ -1,0 +1,284 @@
+/* ============================================================
+   页面悬浮条 · 注入任意网站，需完全自包含（不依赖 shared/）
+   采用深色玻璃以适配绝大多数浅色/深色网页背景
+
+   设计约束：
+   · 宿主页面样式不可控，所有值必须自带，不依赖继承
+   · 触达频率远高于设置页：按钮 ≥ 30px，主要操作 ≥ 78px 宽
+   · z-index 取最大值，避免被页面自身的浮层遮住
+
+   --ss-overlay-probe 挂在 :root（而非悬浮条容器），
+   因为 overlay.js 的 ensureStyle() 在挂载前就要探测，
+   此时容器尚不存在。属性名带前缀且页面不会使用，冲突风险可忽略。
+   ============================================================ */
+
+:root {
+  --ss-overlay-probe: 1;
+}
+
+#slowScroll-overlay {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2147483647; /* 顶层 */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------------- Panel ---------------- */
+#slowScroll-overlay .panel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 8px;
+  border-radius: 14px;
+  color: #f2f5fb;
+  background: linear-gradient(150deg, rgba(30, 35, 52, 0.78), rgba(18, 21, 33, 0.72));
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+          backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 12px 32px rgba(0, 0, 0, 0.36),
+    0 2px 8px rgba(0, 0, 0, 0.22);
+  /* 显隐过渡。visibility 必须参与过渡：单纯 opacity:0 时元素仍可聚焦，
+     键盘 Tab 会跳进看不见的控件。显示方向 0s 即时生效，隐藏方向延迟到
+     淡出结束再真正移出无障碍树，避免动画中途按钮突然消失 */
+  transition:
+    opacity 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 0s;
+}
+
+/* 滚动中自动隐藏：只收起控制条本身，底部状态提示保持可见 */
+#slowScroll-overlay.is-hidden .panel {
+  opacity: 0;
+  transform: translateY(10px) scale(0.96);
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 200ms;
+}
+
+/* 分隔线 */
+#slowScroll-overlay .panel-sep {
+  width: 1px;
+  height: 20px;
+  margin: 0 2px;
+  background: linear-gradient(transparent, rgba(255, 255, 255, 0.22), transparent);
+  flex: none;
+}
+
+/* ---------------- Buttons ---------------- */
+#slowScroll-overlay button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 30px;
+  min-width: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #e9edf7;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 560;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color 140ms linear,
+    border-color 140ms linear,
+    color 140ms linear,
+    transform 140ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#slowScroll-overlay button:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.22);
+  transform: translateY(-1px);
+}
+
+/* 回压反馈：让「已点击」在动画结束前就有确认 */
+#slowScroll-overlay button:active { transform: translateY(0) scale(0.97); }
+
+#slowScroll-overlay button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 焦点环 #a5b4fc 在悬浮条底上 3.64:1，满足非文本元素 ≥3:1
+   （原 #818cf8 仅 2.43:1，不达标） */
+#slowScroll-overlay button:focus-visible {
+  outline: 2px solid #a5b4fc;
+  outline-offset: 2px;
+}
+
+/* 主操作：播放/停止。渐变起点 #5b5ee8 承载白字 4.99:1 */
+#slowScroll-overlay #ss-play {
+  background: linear-gradient(135deg, #5b5ee8, #7c3aed);
+  border-color: rgba(255, 255, 255, 0.24);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 4px 14px rgba(99, 102, 241, 0.4);
+  min-width: 78px;
+}
+
+#slowScroll-overlay #ss-play:hover {
+  background: linear-gradient(135deg, #4f46e5, #6d28d9);
+}
+
+/* 运行中：转为警示语义。#dc2626 承载白字 4.83:1（原 #ef4444 仅 3.76） */
+#slowScroll-overlay #ss-play.running {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 4px 14px rgba(220, 38, 38, 0.42);
+}
+
+/* 播放 / 停止图标切换：由 .running 类驱动，不用内联 style。
+   早期版本用 el.style.setProperty 切换，在 SVG / XML 等非 HTML 文档中
+   元素没有 style 属性，直接抛 TypeError（实测崩溃点）。 */
+#slowScroll-overlay #ss-play .icon-stop { display: none; }
+#slowScroll-overlay #ss-play.running .icon-play { display: none; }
+#slowScroll-overlay #ss-play.running .icon-stop { display: inline-block; }
+
+/* 循环开启态。#047857 承载白字 5.48:1（原 #10b981 仅 2.54） */
+#slowScroll-overlay button.active {
+  background: linear-gradient(135deg, #047857, #036249);
+  border-color: rgba(255, 255, 255, 0.26);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 4px 14px rgba(4, 120, 87, 0.42);
+}
+
+/* 开启态的图标与文字同步提亮，避免「底色变了但前景还是灰的」 */
+#slowScroll-overlay button.active,
+#slowScroll-overlay #ss-play.running { color: #ffffff; }
+
+/* 纯图标按钮 */
+#slowScroll-overlay button.ss-icon {
+  padding: 0;
+  width: 30px;
+  font-size: 14px;
+}
+
+/* ---------------- Speed Readout ---------------- */
+#slowScroll-overlay .speed {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  min-width: 80px;
+  padding: 0 8px;
+  justify-content: center;
+  color: #f2f5fb;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+#slowScroll-overlay .speed .unit {
+  /* 原 rgba(242,245,251,0.56) 合成后仅 3.32:1。提到 0.78 → 4.80:1 */
+  color: rgba(242, 245, 251, 0.78);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* ---------------- Bottom Prompt ---------------- */
+#slowScroll-bottom-prompt {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%) translateY(8px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  color: #f2f5fb;
+  background: linear-gradient(150deg, rgba(30, 35, 52, 0.86), rgba(18, 21, 33, 0.82));
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+          backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 12px 30px rgba(0, 0, 0, 0.34);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 260ms cubic-bezier(0.22, 1, 0.36, 1),
+              transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 2147483647;
+}
+
+#slowScroll-bottom-prompt.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* 状态圆点 */
+#slowScroll-bottom-prompt::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #818cf8;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.22);
+  flex: none;
+}
+
+#slowScroll-bottom-prompt[data-type="infinite"]::before {
+  background: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.22);
+}
+
+#slowScroll-bottom-prompt[data-type="returning"]::before {
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.22);
+  animation: ss-bounce 1.1s ease-in-out infinite;
+}
+
+/* 自动翻页武装期：这是最后一次反悔机会，用暖色提示紧迫性 */
+#slowScroll-bottom-prompt[data-type="auto-next-armed"]::before {
+  background: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.22);
+  animation: ss-bounce 0.6s ease-in-out infinite;
+}
+
+/* 容器失败原因：红色代表「滚不动」，与状态色明确区分 */
+#slowScroll-bottom-prompt[data-type="no-content"]::before,
+#slowScroll-bottom-prompt[data-type="virtual-list"]::before {
+  background: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.22);
+}
+
+@keyframes ss-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+
+/* ---------------- Responsive ---------------- */
+@media (max-width: 480px) {
+  #slowScroll-overlay { right: 10px; bottom: 10px; }
+  #slowScroll-overlay .panel { padding: 6px; gap: 4px; }
+  #slowScroll-overlay button { padding: 0 8px; font-size: 11px; }
+  #slowScroll-overlay .speed { min-width: 62px; padding: 0 4px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #slowScroll-overlay button,
+  #slowScroll-overlay .panel,
+  #slowScroll-bottom-prompt { transition-duration: 1ms; transition-delay: 0ms; }
+  #slowScroll-bottom-prompt::before { animation: none; }
+  #slowScroll-overlay button:hover { transform: none; }
+}
