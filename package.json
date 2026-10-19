@@ -1,0 +1,25 @@
+{
+  "name": "manjuan-scroll",
+  "version": "1.5.1",
+  "description": "漫卷 SlowScroll —— 慢速自动滚动浏览器扩展",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "test": "node temp_tests/engine.test.js && node temp_tests/manifest.test.js && node temp_tests/contrast.test.js && node temp_tests/ui.test.js",
+    "test:engine": "node temp_tests/engine.test.js",
+    "test:manifest": "node temp_tests/manifest.test.js",
+    "test:contrast": "node temp_tests/contrast.test.js",
+    "test:ui": "node temp_tests/ui.test.js",
+    "test:browser": "node temp_tests/run_browser_check.js",
+    "test:browser:strict": "node temp_tests/run_browser_check.js --require",
+    "lint": "node temp_tests/lint.js",
+    "icons": "python temp_tests/gen_icons.py",
+    "pack": "node temp_tests/pack.js",
+    "build": "node temp_tests/build.js",
+    "build:check": "node temp_tests/build.js --check",
+    "ci": "node temp_tests/ci.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

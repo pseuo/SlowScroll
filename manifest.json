@@ -1,0 +1,87 @@
+{
+  "manifest_version": 3,
+  "name": "漫卷 SlowScroll",
+  "version": "1.5.1",
+  "description": "慢速自动滚动浏览器扩展，支持速度调节、暂停恢复、到底回顶循环等功能",
+
+  "icons": {
+    "16": "assets/icons/icon16.png",
+    "32": "assets/icons/icon32.png",
+    "48": "assets/icons/icon48.png",
+    "128": "assets/icons/icon128.png"
+  },
+
+  "permissions": [
+    "activeTab",
+    "scripting", 
+    "storage"
+  ],
+
+  "background": {
+    "service_worker": "background/background.js"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": [
+        "shared/constants.js",
+        "content/overlay.js",
+        "content/scrollEngine.js"
+      ],
+      "css": ["content/overlay.css"],
+      "run_at": "document_end",
+      "all_frames": true
+    }
+  ],
+
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "漫卷 SlowScroll",
+    "default_icon": {
+      "16": "assets/icons/icon16.png",
+      "32": "assets/icons/icon32.png",
+      "48": "assets/icons/icon48.png",
+      "128": "assets/icons/icon128.png"
+    }
+  },
+
+  "commands": {
+    "start_stop": {
+      "suggested_key": {
+        "default": "Alt+S"
+      },
+      "description": "启动/停止自动滚动"
+    },
+    "pause_resume": {
+      "suggested_key": {
+        "default": "Alt+P"
+      },
+      "description": "暂停/恢复自动滚动"
+    },
+    "speed_up": {
+      "suggested_key": {
+        "default": "Alt+Up"
+      },
+      "description": "加速滚动"
+    },
+    "speed_down": {
+      "suggested_key": {
+        "default": "Alt+Down"
+      },
+      "description": "减速滚动"
+    },
+    "toggle_loop": {
+      "description": "切换到底自动回顶循环（在 chrome://extensions/shortcuts 中设置快捷键）"
+    }
+  },
+
+  "options_page": "options/options.html",
+
+  "web_accessible_resources": [
+    {
+      "resources": ["content/overlay.css"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
