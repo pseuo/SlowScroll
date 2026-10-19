@@ -1,0 +1,300 @@
+/* ============================================================
+   漫卷 SlowScroll Design System · Foundation Layer
+   1. Design Tokens   2. Reset   3. Ambient Backdrop
+   ------------------------------------------------------------
+   Glassmorphism 规范：
+   · 模糊半径 ≥ 16px，保证多层叠加不糊
+   · 半透明填充控制在 0.30–0.62 alpha，避免文字对比度崩塌
+   · 顶部 1px 内高光模拟玻璃边缘受光
+   · 边框使用半透明白，夜间/彩色背景下不显脏
+
+   WCAG AA 实测口径（正文 ≥ 4.5:1，非文本 ≥ 3:1）：
+   玻璃是半透明层，文字最终颜色 = 文字色透过「极光背景 + 玻璃填充」
+   叠加后的结果，比色卡标称值更低。因此所有承载文字的颜色均按
+   **最差叠加背景**反推，而非按色卡挑选。改动任一文字色或玻璃
+   alpha 后必须重跑 temp_tests/contrast.test.js，否则会打破已标注的
+   达标结论。该测试按本文件的极光与 alpha 常量复算叠加背景，
+   **两者必须同步修改**，不能只改样式不改实测。
+   ============================================================ */
+
+:root {
+  color-scheme: light;
+
+  /* ---- Brand Ramp ---- */
+  --brand-50:  #eef2ff;
+  --brand-100: #e0e7ff;
+  --brand-200: #c7d2fe;
+  --brand-300: #a5b4fc;
+  --brand-400: #818cf8;
+  --brand-500: #6366f1;
+  --brand-600: #4f46e5;
+  --brand-700: #4338ca;
+
+  --accent-400: #22d3ee;
+  --accent-500: #06b6d4;
+  --violet-500: #8b5cf6;
+  --violet-600: #7c3aed;
+  --rose-500:  #ec4899;
+
+  /* 主操作渐变（承载白字，两端均已实测 ≥ 4.5:1）
+     单独立为一组令牌：分段控件选中态、滑块填充、进度条填充
+     与主按钮共用同一组端点色，避免各写各的渐变导致色相漂移。 */
+  --brand-grad-from: #5b5ee8;   /* 白字 4.99:1 */
+  --brand-grad-to:   #7c3aed;   /* 白字 5.70:1 */
+  --brand-grad-from-hover: #4f46e5;
+  --brand-grad-to-hover:   #6d28d9;
+
+  /* ---- Semantic ----
+     语义色统一到 WCAG AA：作为按钮底色承载白字时需 ≥4.5:1，
+     故 success 取 #047857（5.48:1）而非 #10b981（仅 2.54:1）。
+     亮色版 #10b981 保留为 --color-success-bright，仅用于小面积装饰点。 */
+  --color-success: #047857;
+  --color-success-bright: #10b981;
+  --color-warning: #b45309;
+  --color-error:   #dc2626;
+  --color-info:    #2563eb;
+
+  /* 暂停态专用色：与 warning 同属琥珀语义，但取值不同。
+     warning 是「警示底色」（需承载白字，故偏深）；
+     暂停色是「琥珀色文字」（需在玻璃上做前景），方向相反。
+     浅色下 warning 4.27:1 不够，故另立一档更深的 #9a3412 (6.21:1)。 */
+  --color-paused:      #9a3412;
+  --color-paused-soft: rgba(154, 52, 18, 0.42);
+
+  /* ---- Text Scale ----
+     文字色是「透过玻璃看到的最终颜色」，因此按最差叠加背景
+     （极光紫团 30% + 玻璃填充）反推，而非按色卡标称值挑选。
+     --text-muted 在最差 section 底上实测 5.25:1，满足 AA 正文。 */
+  --text-strong: #151a26;
+  --text-body:   #3d4557;
+  --text-muted:  #50586b;
+  --text-inverse: #ffffff;
+
+  /* ---- Glass Surfaces ---- */
+  --glass-fill-strong: rgba(255, 255, 255, 0.62);
+  --glass-fill:        rgba(255, 255, 255, 0.46);
+  --glass-fill-subtle: rgba(255, 255, 255, 0.30);
+  --glass-fill-hover:  rgba(255, 255, 255, 0.78);
+  --glass-stroke:      rgba(255, 255, 255, 0.72);
+  --glass-stroke-soft: rgba(255, 255, 255, 0.42);
+  --glass-blur: 26px;
+  --glass-blur-sm: 16px;
+  --glass-saturate: 165%;
+
+  /* ---- Elevation (冷色投影，避免灰脏) ---- */
+  --shadow-xs: 0 1px 2px rgba(21, 26, 38, 0.06);
+  --shadow-sm: 0 2px 8px rgba(21, 26, 38, 0.07), 0 1px 2px rgba(21, 26, 38, 0.04);
+  --shadow-md: 0 8px 24px rgba(21, 26, 38, 0.09), 0 2px 6px rgba(21, 26, 38, 0.05);
+  --shadow-lg: 0 20px 48px rgba(21, 26, 38, 0.13), 0 4px 12px rgba(21, 26, 38, 0.06);
+  --shadow-inset-top: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+
+  /* ---- Radius ---- */
+  --radius-xs: 8px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+
+  /* ---- Spacing (base 4，刻度连续无缺口) ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-9: 36px;
+  --space-10: 40px;
+  --space-11: 44px;
+  --space-12: 48px;
+
+  /* ---- Typography ---- */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text",
+               "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  --text-2xs: 11px;
+  --text-xs:  12px;
+  --text-sm:  13px;
+  --text-md:  14px;
+  --text-base: 15px;
+  --text-lg:  17px;
+  --text-xl:  20px;
+  --text-2xl: 26px;
+  --text-3xl: 32px;
+
+  /* 字重档位：中文在 500 以下会显得发虚，界面文字不低于 500，
+     标题用 600/650 拉开层级。集中定义避免各文件随手写数字。 */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 650;
+
+  /* ---- Motion ----
+     时长按「反馈的紧迫程度」分档，而非按视觉大小：
+     微交互（hover/焦点）用 instant/fast，状态切换用 normal，
+     面板展开收起用 slow。全部落在 150–300ms 的可感知「即时」区间，
+     超过 300ms 会让控件显得迟钝。 */
+  --dur-instant: 90ms;
+  --dur-fast: 140ms;
+  --dur-normal: 240ms;
+  --dur-slow: 380ms;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ---- Focus ----
+     焦点环拆成两个分量令牌，供 :focus-visible 统一消费。
+     浅色下 halo 为白（压在彩色按钮上仍清晰），深色下由覆盖改深。 */
+  --focus-ring-color: var(--brand-500);
+  --focus-ring-halo: rgba(255, 255, 255, 0.9);
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 3px;
+}
+
+/* ============================================================
+   Dark Theme · 夜间玻璃降低填充亮度、提高描边可见度
+   ============================================================ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --text-strong: #f2f5fb;
+    --text-body:   #cbd3e1;
+    --text-muted:  #97a1b5;
+
+    /* 深色下前景需提亮：#b45309 在深玻璃上仅 2.76:1，
+       #f59e0b 可达 6.45:1。悬停态沿用 rgba 叠加，不单独设值。 */
+    --color-paused:      #f59e0b;
+    --color-paused-soft: rgba(245, 158, 11, 0.42);
+
+    --glass-fill-strong: rgba(38, 43, 58, 0.66);
+    --glass-fill:        rgba(38, 43, 58, 0.50);
+    --glass-fill-subtle: rgba(38, 43, 58, 0.34);
+    /* 深色下 hover 必须「提亮填充」而非「叠白」：
+       叠白会把深玻璃翻成近白，而文字是浅色，导致浅底浅字不可读。
+       改为在深色填充基础上加量，深色文字对比度 11.1:1。 */
+    --glass-fill-hover:  rgba(64, 71, 92, 0.62);
+    --glass-stroke:      rgba(255, 255, 255, 0.14);
+    --glass-stroke-soft: rgba(255, 255, 255, 0.08);
+    --shadow-inset-top: inset 0 1px 0 rgba(255, 255, 255, 0.10);
+
+    /* 深色下品牌色作为焦点环底对比度不足，提到 brand-300（7.99:1） */
+    --focus-ring-color: var(--brand-300);
+    --focus-ring-halo: rgba(20, 24, 35, 0.9);
+
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.34);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.42);
+    --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.52);
+  }
+}
+
+/* ============================================================
+   Reset
+   ============================================================ */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.55;
+  color: var(--text-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-variant-numeric: tabular-nums;
+}
+
+h1, h2, h3, h4 {
+  margin: 0;
+  color: var(--text-strong);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+p { margin: 0; }
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button { cursor: pointer; }
+
+img, svg { display: block; }
+
+/* 统一焦点可见性（键盘可达性底线）
+   双层环：内层halo 垫底，保证焦点环压在品牌色按钮上时仍有边界 */
+:focus { outline: none; }
+:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: var(--radius-xs);
+  box-shadow: 0 0 0 2px var(--focus-ring-halo);
+}
+
+/* ============================================================
+   Ambient Backdrop · 玻璃必须有背景才成立
+   四团柔光 + 细网格，静态不渲染开销
+
+   ⚠ 对比度实测（temp_tests/contrast.test.js）按下列常量复算
+   「最差叠加背景」：浅色取 #8b5cf6 @ 0.30 叠 #f4f6fc，
+   深色取 #8b5cf6 @ 0.30 叠 #0e1119。改动此处必须同步改测试。
+   ============================================================ */
+.ss-aurora {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background:
+    radial-gradient(1200px 620px at 12% -8%,  rgba(139, 92, 246, 0.30), transparent 62%),
+    radial-gradient(980px 520px at 92% 4%,   rgba(34, 211, 238, 0.26),  transparent 60%),
+    radial-gradient(900px 620px at 78% 96%,   rgba(236, 72, 153, 0.20),  transparent 62%),
+    radial-gradient(760px 520px at 4% 88%,    rgba(99, 102, 241, 0.24),  transparent 60%),
+    linear-gradient(168deg, #f4f6fc 0%, #eaeef9 46%, #f6f4fb 100%);
+}
+
+@media (prefers-color-scheme: dark) {
+  .ss-aurora {
+    background:
+      radial-gradient(1200px 620px at 12% -8%,  rgba(139, 92, 246, 0.30), transparent 62%),
+      radial-gradient(980px 520px at 92% 4%,   rgba(34, 211, 238, 0.20),  transparent 60%),
+      radial-gradient(900px 620px at 78% 96%,   rgba(236, 72, 153, 0.18),  transparent 62%),
+      radial-gradient(760px 520px at 4% 88%,    rgba(79, 70, 229, 0.26),  transparent 60%),
+      linear-gradient(168deg, #0e1119 0%, #141826 48%, #10121c 100%);
+  }
+}
+
+/* 细网格叠加，制造材质纹理 */
+.ss-aurora::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.22) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.22) 1px, transparent 1px);
+  background-size: 44px 44px;
+  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 20%, transparent 78%);
+          mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 20%, transparent 78%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

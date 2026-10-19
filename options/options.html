@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>漫卷 SlowScroll · 设置</title>
+  <link rel="stylesheet" href="../shared/tokens.css" />
+  <link rel="stylesheet" href="../shared/components.css" />
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <div class="ss-aurora" aria-hidden="true"></div>
+
+  <main class="page">
+    <!-- ============ Page Header ============ -->
+    <header class="page-header">
+      <div class="page-header__mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 4v16" />
+          <path d="m7.5 8.5 4.5-4.5 4.5 4.5" />
+          <path d="m7.5 15.5 4.5 4.5 4.5-4.5" />
+        </svg>
+      </div>
+      <div class="page-header__text">
+        <h1 class="page-header__title">漫卷</h1>
+        <p class="page-header__subtitle">滚动行为与界面偏好设置</p>
+      </div>
+      <span class="badge badge--dot">全局配置</span>
+    </header>
+
+    <!-- ============ Scroll Settings ============ -->
+    <section class="glass-card section" aria-labelledby="sec-scroll">
+      <div class="section__head">
+        <div class="section__headtext">
+          <h2 class="section__title" id="sec-scroll">滚动</h2>
+          <p class="section__desc">调整自动滚动的默认速度，作用于所有页面</p>
+        </div>
+      </div>
+
+      <!-- 速度是设置页里唯一需要「精细调参」的项，因此给它独立卡片，
+           数值放大到 32px 并配刻度尺，让当前值一眼可读。 -->
+      <div class="speed-card">
+        <div class="speed-card__head">
+          <span class="speed-card__label">默认速度</span>
+          <div class="speed-card__readout">
+            <output class="speed-card__value" id="defaultSpeedValue" for="defaultSpeed">600</output>
+            <span class="speed-card__unit">px/s</span>
+          </div>
+        </div>
+
+        <input
+          id="defaultSpeedRange"
+          class="slider"
+          type="range"
+          min="50"
+          max="4000"
+          step="50"
+          value="600"
+          aria-label="默认速度滑块" />
+
+        <div class="speed-control__scale" aria-hidden="true">
+          <span>50</span>
+          <span>1000</span>
+          <span>2000</span>
+          <span>3000</span>
+          <span>4000</span>
+        </div>
+
+        <p class="speed-card__hint">
+          每秒滚动的像素数，范围 50 – 4000 px/s。数值越大滚动越快。
+        </p>
+
+        <div class="speed-card__input">
+          <label class="speed-card__inputlabel" for="defaultSpeed">精确输入</label>
+          <input
+            id="defaultSpeed"
+            class="field-input"
+            type="number"
+            min="50"
+            max="4000"
+            step="50"
+            value="600"
+            inputmode="numeric" />
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-row__text">
+          <div class="setting-row__title">速度步进</div>
+          <div class="setting-row__hint">每次点击加减按钮所调整的数值</div>
+        </div>
+        <div class="setting-row__control">
+          <label class="ss-visually-hidden" for="speedStep">速度步进</label>
+          <input id="speedStep" class="field-input" type="number" min="10" max="500" step="10" value="50" />
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Behavior ============ -->
+    <section class="glass-card section" aria-labelledby="sec-behavior">
+      <div class="section__head">
+        <div class="section__headtext">
+          <h2 class="section__title" id="sec-behavior">行为</h2>
+          <p class="section__desc">控制自动滚动的触发条件与循环逻辑</p>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-row__text">
+          <div class="setting-row__title">到底自动回到顶部继续滚动</div>
+          <div class="setting-row__hint">
+            滚动到页面底部后自动回到顶部并继续向下，形成循环。检测到无限滚动页面时会自动跳过回顶。
+          </div>
+        </div>
+        <div class="setting-row__control">
+          <label class="switch">
+            <input id="loopEnabled" type="checkbox" />
+            <span class="switch__track" aria-hidden="true"><span class="switch__thumb"></span></span>
+            <span class="ss-visually-hidden">到底自动回到顶部继续滚动</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-row__text">
+          <div class="setting-row__title">手动滚动时的接管策略</div>
+          <div class="setting-row__hint">
+            你主动滚滚轮或拖动时，扩展如何让出控制权。默认「暂停」在长文阅读中过于激进，
+            「减速」让你能一边跟读一边保持自动滚动，「忽略」则始终自动滚动。
+          </div>
+        </div>
+        <div class="setting-row__control">
+          <div class="segmented" role="radiogroup" aria-label="手动滚动时的接管策略"
+               id="gesturePolicyGroup">
+            <button type="button" class="segmented__item" data-policy="pause" role="radio" aria-checked="false" tabindex="0">暂停</button>
+            <button type="button" class="segmented__item" data-policy="slowdown" role="radio" aria-checked="false" tabindex="-1">减速</button>
+            <button type="button" class="segmented__item" data-policy="ignore" role="radio" aria-checked="false" tabindex="-1">忽略</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-row__text">
+          <div class="setting-row__title">区间终点停留</div>
+          <div class="setting-row__hint">
+            区间循环滚到下沿后原地停留的时长，留出读完这一段的时间再回弹。
+          </div>
+        </div>
+        <div class="setting-row__control">
+          <label class="ss-visually-hidden" for="rangeDwellMs">区间终点停留</label>
+          <input id="rangeDwellMs" class="field-input" type="number" min="0" max="60000" step="500" value="3000" />
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-row__text">
+          <div class="setting-row__title">页面悬浮控制条</div>
+          <div class="setting-row__hint">在页面右下角显示播放、速度与循环开关</div>
+        </div>
+        <div class="setting-row__control">
+          <label class="switch">
+            <input id="overlayEnabled" type="checkbox" checked />
+            <span class="switch__track" aria-hidden="true"><span class="switch__thumb"></span></span>
+            <span class="ss-visually-hidden">页面悬浮控制条</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-row__text">
+          <div class="setting-row__title">滚动时自动隐藏控制条</div>
+          <div class="setting-row__hint">
+            开始滚动后控制条自动淡出，把页面完整让给阅读内容。鼠标移回右下角或按 Esc 即可唤回；触底提示条始终可见。
+          </div>
+        </div>
+        <div class="setting-row__control">
+          <label class="switch">
+            <input id="autoHideOverlay" type="checkbox" checked />
+            <span class="switch__track" aria-hidden="true"><span class="switch__thumb"></span></span>
+            <span class="ss-visually-hidden">滚动时自动隐藏控制条</span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Automation ============ -->
+    <section class="glass-card section" aria-labelledby="sec-auto">
+      <div class="section__head">
+        <div class="section__headtext">
+          <h2 class="section__title" id="sec-auto">自动化</h2>
+          <p class="section__desc">让滚动在无人值守时按预期收尾</p>
+        </div>
+      </div>
+
+      <div class="setting-row setting-row--stack">
+        <div class="setting-row__text">
+          <div class="setting-row__title setting-row__title--warn">
+            触底自动翻页（下一章 / 下一页）
+          </div>
+          <div class="setting-row__hint">
+            <strong>开启后扩展会替你点击页面上的链接，这是一次不可撤销的操作。</strong>
+            仅在信任的网文 / 教程站点使用，并强烈建议填写站点白名单把它限制到具体域名。
+            识别不到「下一章」时不会误点，链接仅取<code>rel="next"</code> 语义标记或精确文案，不按位置猜测。
+          </div>
+        </div>
+
+        <div class="setting-row__control setting-row__control--stack">
+          <label class="switch">
+            <input id="autoNextPage" type="checkbox" />
+            <span class="switch__track" aria-hidden="true"><span class="switch__thumb"></span></span>
+            <span class="ss-visually-hidden">触底自动翻页</span>
+          </label>
+
+          <div class="auto-next-block" id="autoNextBlock" hidden>
+            <label class="ss-visually-hidden" for="autoNextSites">站点白名单，每行一个域名</label>
+            <textarea
+              id="autoNextSites"
+              class="field-input auto-next-sites"
+              rows="3"
+              spellcheck="false"
+              placeholder="每行一个域名&#10;example.com&#10;example.org"></textarea>
+            <div class="setting-row__hint setting-row__hint--tight">
+              留空表示不限站点。填入域名后，只有这些站点上会自动翻页（子域名同样生效）。
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-row__text">
+          <div class="setting-row__title">倒计时到点自动停</div>
+          <div class="setting-row__hint">
+            从你按下开始滚动起计时，到点后自动停止并还原页面。适合「睡前读 20 分钟」这类场景，0 表示不限时。
+          </div>
+        </div>
+        <div class="setting-row__control">
+          <label class="ss-visually-hidden" for="stopAfterMinutes">到点自动停止的分钟数</label>
+          <input id="stopAfterMinutes" class="field-input stop-after-input" type="number"
+                 min="0" max="480" step="5" value="0" />
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Shortcuts ============ -->
+    <section class="glass-card section" aria-labelledby="sec-shortcut">
+      <div class="section__head">
+        <div class="section__headtext">
+          <h2 class="section__title" id="sec-shortcut">快捷键</h2>
+          <p class="section__desc">可在扩展管理页中自定义按键组合</p>
+        </div>
+      </div>
+
+      <ul class="shortcut-list">
+        <li class="shortcut-item">
+          <span class="shortcut-item__label">启动 / 停止滚动</span>
+          <span class="shortcut-item__keys">
+            <kbd class="kbd">Alt</kbd><kbd class="kbd">S</kbd>
+          </span>
+        </li>
+        <li class="shortcut-item">
+          <span class="shortcut-item__label">暂停 / 恢复滚动</span>
+          <span class="shortcut-item__keys">
+            <kbd class="kbd">Alt</kbd><kbd class="kbd">P</kbd>
+          </span>
+        </li>
+        <li class="shortcut-item">
+          <span class="shortcut-item__label">加速</span>
+          <span class="shortcut-item__keys">
+            <kbd class="kbd">Alt</kbd><kbd class="kbd">↑</kbd>
+          </span>
+        </li>
+        <li class="shortcut-item">
+          <span class="shortcut-item__label">减速</span>
+          <span class="shortcut-item__keys">
+            <kbd class="kbd">Alt</kbd><kbd class="kbd">↓</kbd>
+          </span>
+        </li>
+        <li class="shortcut-item">
+          <span class="shortcut-item__label">切换回顶循环</span>
+          <span class="ss-muted shortcut-item__hint">需手动设置</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- ============ Actions ============
+         粘性底栏：设置项分散在长页面里，保存按钮若随内容滚走，
+         改完一项要翻回底部才能提交。 -->
+    <footer class="page-footer">
+      <div class="page-footer__status" role="status" aria-live="polite">
+        <span class="toast toast--success" id="status" hidden>设置已保存</span>
+      </div>
+      <div class="page-footer__actions">
+        <button id="reset" class="btn btn--ghost" type="button">恢复默认</button>
+        <button id="save" class="btn btn--primary" type="button">保存设置</button>
+      </div>
+    </footer>
+  </main>
+
+  <script src="../shared/constants.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

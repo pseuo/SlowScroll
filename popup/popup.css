@@ -1,0 +1,426 @@
+/* ============================================================
+   Popup · 320px 宽浮层
+   玻璃卡片悬浮于极光背景之上，边缘留 14px 呼吸空间
+
+   高度预算：Chrome 弹窗可视高度上限约 600px。纵向排布必须把
+   「低频功能」收进折叠区，否则末尾（设置入口）会被裁掉。
+   ============================================================ */
+
+body {
+  width: 320px;
+  background: transparent;
+}
+
+/* 弹窗内背景铺满，底部圆角由浏览器裁切 */
+.ss-aurora { border-radius: 0; }
+
+.popup {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  gap: 6px;
+}
+
+/* ---------------- Header ---------------- */
+.popup-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.popup-header__mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-inverse);
+  background: linear-gradient(140deg, var(--brand-grad-from), var(--violet-500));
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.4) inset, 0 6px 14px rgba(79, 70, 229, 0.3);
+}
+
+.popup-header__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.popup-header__title {
+  font-size: var(--text-base);
+  letter-spacing: -0.01em;
+}
+
+.popup-header__sub {
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ---------------- Hero · 状态与进度 ----------------
+   把「当前状态」和「滚动进度」合成一块：两者是同一次阅读的
+   连续信息，拆成两块等权重卡片会让用户多扫一眼才能拼出全貌。 */
+.hero {
+  padding: 10px 14px 12px;
+  border-radius: var(--radius-md);
+  background: var(--glass-fill-subtle);
+  border: 1px solid var(--glass-stroke-soft);
+  box-shadow: var(--shadow-inset-top);
+}
+
+.hero__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: 6px;
+}
+
+.hero__state {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+
+.hero__pct {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color: var(--text-strong);
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.hero__remaining {
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+}
+
+/* 进度条本体：宽度由 --pct 变量驱动，JS 只写变量不写内联 width，
+   保持「禁止内联样式」约定。 */
+.progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--glass-fill-strong);
+  border: 1px solid var(--glass-stroke-soft);
+  overflow: hidden;
+}
+
+.progress__fill {
+  height: 100%;
+  width: var(--pct, 0%);
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--brand-grad-from), var(--violet-600));
+  transition: width var(--dur-normal) var(--ease-out);
+}
+
+/* ---------------- Actions ---------------- */
+.popup-actions {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: var(--space-2);
+}
+
+.popup-actions .btn { min-height: 40px; }
+
+.popup-actions__main .icon-stop,
+.popup-actions__main .icon-pause { display: none; }
+body.is-running .popup-actions__main .icon-play { display: none; }
+body.is-running .popup-actions__main .icon-stop { display: inline-block; }
+/* 暂停时主按钮显示暂停图标，停止时才显示方块 */
+body.is-paused .popup-actions__main .icon-stop { display: none; }
+body.is-paused .popup-actions__main .icon-pause { display: inline-block; }
+
+/* ---------------- Paused ----------------
+   暂停态此前只靠文案区分，视觉上与「已停止」仅差一词。
+   这里用琥珀色承接「进行中但被挂起」的语义：主按钮降为描边态，
+   徽章转为静态琥珀，hero 状态文字同步染色，三处视觉线索共同
+   表达暂停。颜色统一走 --color-paused 令牌（浅色 #9a3412 /
+   深色 #f59e0b）——不能直接用 --color-warning：它是「警示底色」
+   需承载白字故偏深，当前景用时浅色仅 4.27:1、深色仅 2.76:1。 */
+body.is-paused .popup-actions__main {
+  color: var(--color-paused);
+  background: var(--glass-fill-strong);
+  border-color: var(--color-paused-soft);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.28) inset,
+    0 4px 14px rgba(154, 52, 18, 0.18);
+}
+body.is-paused .popup-actions__main:hover:not(:disabled) {
+  background: var(--glass-fill-hover);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.32) inset,
+    0 6px 18px rgba(154, 52, 18, 0.24);
+}
+
+body.is-paused .hero__state { color: var(--color-paused); }
+
+/* 暂停时徽章不再脉冲，改为静态琥珀，暗示「已挂起」而非「运行中」 */
+body.is-paused #stateBadge {
+  color: var(--color-paused);
+  border-color: var(--color-paused-soft);
+}
+body.is-paused #stateBadge::before {
+  background: var(--color-paused);
+  box-shadow: 0 0 0 3px var(--color-paused-soft);
+  animation: none;
+}
+
+/* ---------------- Panel · 通用内容块 ----------------
+   统一 padding / 圆角 / 描边的容器，替代原先各自为政的
+   popup-section 系列类名。 */
+.panel {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--glass-fill-subtle);
+  border: 1px solid var(--glass-stroke-soft);
+  box-shadow: var(--shadow-inset-top);
+}
+
+.panel__head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.panel__title {
+  color: var(--text-strong);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.01em;
+  flex: 1;
+}
+
+.panel__value {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text-strong);
+  line-height: 1;
+}
+
+.panel__unit {
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+}
+
+.panel--row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.panel__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.panel__hint {
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+}
+
+/* 区块内的补充说明文本（降速提示、策略解释、区间用法） */
+.panel__note {
+  margin-top: 6px;
+  font-size: var(--text-2xs);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.panel__note--lead { margin-top: 0; margin-bottom: var(--space-2); }
+
+/* ---------------- Segmented ----------------
+   组件本体已上收到 shared/components.css（消除 popup / options
+   两份重复实现）。此处只做宽度适配：popup 里需要撑满一行。 */
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  width: 100%;
+}
+
+/* ---------------- Disclosure · 渐进披露 ----------------
+   区间循环默认收起，把纵向空间让给高频控件。
+   状态文案常驻在标题行，折叠时也能知道「是否已设区间」。 */
+.disclosure {
+  border-radius: var(--radius-md);
+  background: var(--glass-fill-subtle);
+  border: 1px solid var(--glass-stroke-soft);
+  box-shadow: var(--shadow-inset-top);
+  overflow: hidden;
+}
+
+.disclosure__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 34px;
+  padding: 0 12px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  transition: background-color var(--dur-fast) linear;
+}
+
+/* 隐藏 Chrome 内建三角标记，改用自绘 chevron */
+.disclosure__summary::-webkit-details-marker { display: none; }
+.disclosure__summary::marker { content: ""; }
+
+.disclosure__summary:hover { background: var(--glass-fill); }
+
+.disclosure__summary:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm);
+}
+
+.disclosure__title {
+  flex: 1;
+  color: var(--text-strong);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.disclosure__status {
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.disclosure__chevron {
+  flex: none;
+  color: var(--text-muted);
+  transition: transform var(--dur-normal) var(--ease-out);
+}
+
+.disclosure[open] .disclosure__chevron { transform: rotate(180deg); }
+
+.disclosure__body {
+  padding: 0 var(--space-3) var(--space-3);
+}
+
+/* ---------------- Range ---------------- */
+.range-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: var(--space-1);
+}
+
+.range-actions__btn {
+  min-height: 30px;
+  padding: 0 var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.range-dwell {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--glass-stroke-soft);
+}
+
+.range-dwell__label,
+.range-dwell__value {
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ---------------- Auto Next / Stop After ---------------- */
+/* 容器失败原因：紧贴进度条下方，让用户把「滚不动」和进度 0% 联系起来 */
+.hero__issue {
+  margin-top: var(--space-2);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-error) 30%, transparent);
+  color: var(--text-strong);
+  font-size: var(--text-2xs);
+  line-height: 1.45;
+}
+
+.panel--flush {
+  padding-top: var(--space-2);
+  border-top: none;
+}
+
+/* 危险操作的警示文案：颜色克制但足以引起注意 */
+.panel__note--warn {
+  color: var(--color-error);
+}
+
+.auto-field {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--glass-stroke-soft);
+}
+
+.auto-field__label {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+}
+
+.auto-next-sites {
+  width: 100%;
+  resize: vertical;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  line-height: 1.5;
+}
+
+.auto-field__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.stop-after-input {
+  width: 88px;
+}
+
+.stop-after-left {
+  margin-left: auto;
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ---------------- Footer ---------------- */
+.popup-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-top: 10px;
+  border-top: 1px solid var(--glass-stroke-soft);
+}
+
+.popup-footer__hint {
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.popup-footer__link {
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+}

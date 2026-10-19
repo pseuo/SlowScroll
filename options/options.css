@@ -1,0 +1,284 @@
+/* ============================================================
+   设置页 · 页面级布局
+   组件样式全部来自 shared/components.css（含 .segmented）
+
+   排版原则：
+   · 内容宽度上限 720px —— 再宽会让「左标题 / 右控件」的
+     setting-row 两端距离过大，视线要横跨整个屏幕。
+   · 每张卡片只承载一个主题，卡片之间靠间距而非分隔线区分。
+   · 保存栏吸底，保证长页面滚动到任何位置都能提交。
+   ============================================================ */
+
+.page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: var(--space-12) var(--space-6) 96px;  /* 底部留出吸底栏高度 */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* ---------------- Header ---------------- */
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-1);
+}
+
+.page-header__mark {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  flex: none;
+  border-radius: var(--radius-md);
+  color: var(--text-inverse);
+  background: linear-gradient(140deg, var(--brand-grad-from) 0%, var(--violet-500) 55%, var(--accent-500) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.4) inset,
+    0 8px 20px rgba(79, 70, 229, 0.34);
+}
+
+.page-header__text { min-width: 0; flex: 1; }
+
+.page-header__title {
+  font-size: var(--text-2xl);
+  letter-spacing: -0.025em;
+}
+
+.page-header__subtitle {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* ---------------- Section ---------------- */
+.section {
+  padding: var(--space-5) var(--space-6) var(--space-3);
+}
+
+.section__head { margin-bottom: var(--space-3); }
+
+.section__title {
+  font-size: var(--text-lg);
+}
+
+.section__desc {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* ---------------- Segmented ----------------
+   组件本体已上收到 shared/components.css，这里只给设置页需要的
+   最小宽度：三个中文标签 + 内边距，窄于此会换行。 */
+.segmented {
+  --segmented-min-width: 240px;
+}
+
+/* ---------------- Speed Control ----------------
+   速度是设置页唯一需要精细调参的项，单独成卡并放大数值，
+   让「当前值 / 区间范围 / 精确输入」在同一视线内完成。 */
+.speed-card {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--glass-fill-subtle);
+  border: 1px solid var(--glass-stroke-soft);
+  box-shadow: var(--shadow-inset-top);
+  margin-bottom: var(--space-2);
+}
+
+.speed-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.speed-card__label {
+  color: var(--text-strong);
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+}
+
+.speed-card__readout {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.speed-card__value {
+  font-family: var(--font-mono);
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+  color: var(--text-strong);
+  letter-spacing: -0.03em;
+}
+
+.speed-card__unit {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  font-weight: var(--weight-semibold);
+}
+
+/* 刻度尺跟随常量由 options.js 回填（applyConstantsToForm），
+   避免出现「刻度写 4000、实际最大 3000」 */
+.speed-control__scale {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--text-muted);
+  opacity: 0.82;
+  padding: 0 2px;
+  margin-top: -2px;
+}
+
+.speed-card__hint {
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--text-muted);
+  max-width: 52ch;
+}
+
+.speed-card__input {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--glass-stroke-soft);
+}
+
+.speed-card__inputlabel {
+  font-size: var(--text-sm);
+  color: var(--text-body);
+}
+
+.speed-card__input .field-input { width: 110px; }
+
+/* ---------------- Automation ---------------- */
+/* 自动翻页是唯一会替用户点击页面元素的开关，标题用警示色单独标出，
+   让用户在滚动到这一行时就知道它与其他选项性质不同。 */
+.setting-row__title--warn {
+  color: var(--color-error);
+}
+
+.setting-row__hint--tight {
+  margin-top: var(--space-1);
+  font-size: var(--text-2xs);
+}
+
+.setting-row__control--stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+  min-width: 260px;
+}
+
+.auto-next-block {
+  width: 100%;
+}
+
+.auto-next-sites {
+  width: 100%;
+  resize: vertical;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  line-height: 1.6;
+}
+
+.stop-after-input {
+  width: 110px;
+}
+
+/* ---------------- Shortcuts ---------------- */
+.shortcut-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.shortcut-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+}
+
+.shortcut-item + .shortcut-item {
+  border-top: 1px solid var(--glass-stroke-soft);
+}
+
+.shortcut-item__label {
+  color: var(--text-body);
+  font-size: var(--text-md);
+}
+
+/* 键帽成组右对齐，组内相邻键帽贴合成一个整体，
+   视觉上读作「一组快捷键」而非两个独立按键 */
+.shortcut-item__keys {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+}
+
+.shortcut-item__keys .kbd + .kbd { margin-left: -4px; }
+
+.shortcut-item__hint { font-size: var(--text-sm); }
+
+/* ---------------- Footer ----------------
+   吸底：设置项分散在整页，保存入口必须始终可达。
+   用 fixed 而非 sticky —— sticky 需要祖先无 overflow 约束，
+   而 .page 是 flex 容器，sticky 在此不可靠。 */
+.page-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) max(var(--space-6), calc((100vw - 760px) / 2 + var(--space-6)));
+  background: var(--glass-fill-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+          backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border-top: 1px solid var(--glass-stroke);
+  box-shadow: 0 -8px 24px rgba(21, 26, 38, 0.08);
+}
+
+.page-footer__status { min-height: 32px; display: flex; align-items: center; }
+
+.page-footer__actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-left: auto;
+}
+
+/* ---------------- Responsive ---------------- */
+@media (max-width: 560px) {
+  .page { padding: var(--space-8) var(--space-4) 104px; }
+  .section { padding: var(--space-4) var(--space-4) var(--space-1); }
+  .page-header { flex-wrap: wrap; }
+  .page-header .badge { order: 3; }
+  .setting-row { flex-wrap: wrap; }
+  .setting-row__control { margin-left: auto; }
+  .segmented { --segmented-min-width: 100%; }
+  .page-footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    padding: var(--space-3) var(--space-4);
+  }
+  .page-footer__actions { margin-left: 0; }
+  .page-footer__actions .btn { flex: 1; }
+  .page-footer__status { justify-content: center; }
+}
