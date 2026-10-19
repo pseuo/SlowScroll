@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>浏览器行为验证 · 漫卷 SlowScroll</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+  .section { margin-bottom: 100px; padding: 20px; border: 1px solid #ddd; }
+  .case { padding: 10px 14px; border-radius: 8px; font-family: ui-monospace, Consolas, monospace; font-size: 13px; margin: 8px 0; }
+  .pass { background: #EAF3DE; color: #173404; }
+  .fail { background: #FCEBEB; color: #501313; }
+  .info { background: #E6F1FB; color: #042C53; }
+  h3 { margin: 24px 0 8px; }
+</style>
+</head>
+<body>
+<h1>浏览器行为验证</h1>
+<p>本页不依赖扩展，直接加载 <code>content/scrollEngine.js</code> 与 <code>shared/constants.js</code> 源码，在真实 DOM 中验证引擎行为。</p>
+
+<div id="results"></div>
+
+<div class="section" id="filler"></div>
+
+<script>
+// ---- 加载常量与引擎 ----
+const results = [];
+function report(name, ok, detail) {
+  results.push({ name, ok, detail });
+  const el = document.createElement('div');
+  el.className = 'case ' + (ok ? 'pass' : 'fail');
+  el.textContent = (ok ? '✓ ' : '✗ ') + name + (detail ? ' — ' + detail : '');
+  document.getElementById('results').appendChild(el);
+  console.log(el.textContent);
+}
+window.__report = report;
+
+// ---- 扩展 API 桩 ----
+// 引擎依赖 chrome.runtime / chrome.storage，在普通页面里不存在，
+// 这里提供最小可用实现，使引擎能脱离扩展上下文独立运行。
+window.chrome = {
+  runtime: {
+    lastError: null,
+    onMessage: { addListener: () => {} },
+    sendMessage: (msg, cb) => { if (typeof cb === 'function') cb({ ok: true }); }
+  },
+  storage: {
+    sync: {
+      get: (defaults, cb) => cb(defaults),
+      set: (vals, cb) => { if (typeof cb === 'function') cb(); }
+    },
+    onChanged: { addListener: () => {} }
+  }
+};
+</script>
+
+<script src="../shared/constants.js"></script>
+<script src="../content/scrollEngine.js"></script>
+
+<script>
+const engine = window.__slowScrollEngine;
+const C = window.__SLOWSCROLL_CONSTANTS__;
+
+// ---- 准备一个长页面 ----
+const filler = document.getElementById('filler');
+for (let i = 0; i < 60; i++) {
+  const d = document.createElement('div');
+  d.className = 'section';
+  d.innerHTML = '<h3>段落 ' + (i + 1) + '</h3><p>用于验证滚动引擎行为的内容。</p>';
+  filler.appendChild(d);
+}
+document.body.style.minHeight = '12000px';
+
+setTimeout(async () => {
+  // ============ C1 常量加载 ============
+  report('C1 常量已加载', !!C && C.MAX_SPEED === 4000, C ? `MAX_SPEED=${C.MAX_SPEED}` : '缺失');
+
+  // ============ C2 容器探测 ============
+  const container = engine.reselectContainer();
+  const isDoc = container === document.scrollingElement || container === document.documentElement;
+  report('C2 识别到滚动容器', !!container && (isDoc || container.scrollHeight > container.clientHeight),
+    isDoc ? 'document 根' : '内部容器');
+
+  // ============ C3 速度钳制取自常量 ============
+  engine.setSpeed(999999);
+  const hi = engine.getSnapshot().speed;
+  engine.setSpeed(-5);
+  const lo = engine.getSnapshot().speed;
+  report('C3 速度钳制遵循常量', hi === C.MAX_SPEED && lo === C.MIN_SPEED, `${lo} ~ ${hi}`);
+
+  // ============ C4 步进取自常量 ============
+  engine.setSpeed(600);
+  engine.getState().step = C.DEFAULT_STEP;
+  const stepped = engine.stepSpeed(1);
+  report('C4 步进使用常量默认值', stepped === 600 + C.DEFAULT_STEP, `600 → ${stepped}`);
+
+  // ============ C5 容器校验节流：统计样式重算 ============
+  let styleCalls = 0;
+  const origGCS = window.getComputedStyle.bind(window);
+  window.getComputedStyle = function (el, ps) { styleCalls++; return origGCS(el, ps); };
+
+  engine.startScrolling();
+  styleCalls = 0;
+
+  const t0 = performance.now();
+  await new Promise((r) => setTimeout(r, 1000));   // 约 60 帧
+  window.getComputedStyle = origGCS;
+  const elapsed = performance.now() - t0;
+
+  const frames = Math.round(elapsed / 16.7);
+  report('C5 容器校验已节流', styleCalls <= Math.ceil(frames / C.CONTAINER_CHECK_INTERVAL_FRAMES) + 2,
+    `${frames} 帧内样式重算 ${styleCalls} 次（未节流约为 ${frames} 次）`);
+
+  // ============ C5b 文档根元素可被正确识别为滚动容器 ============
+  // 回归防护：标准模式下 documentElement 的 overflow 计算值是 visible，
+  // 若按普通元素判定 isScrollable 会永远返回 false，
+  // 导致容器抽检每次失败并回落到全量扫描 body *（Node 桩测不出此问题）。
+  {
+    const de = document.documentElement;
+    const overflowY = getComputedStyle(de).overflowY;
+    const before = engine.reselectContainer();
+    const isRoot = before === de || before === document.scrollingElement;
+    report('C5b 文档根元素被正确识别', isRoot,
+      `overflowY=${overflowY}（根元素特殊，不走普通 overflow 判定）`);
+  }
+
+  // ============ C6 确实在滚动 ============
+  const scrolled = document.scrollingElement.scrollTop > 0 || container.scrollTop > 0;
+  report('C6 页面实际滚动', scrolled, `scrollTop=${Math.round(container.scrollTop)}`);
+
+  // ============ C7 用户手势接管 ============
+  window.dispatchEvent(new WheelEvent('wheel', { deltaY: 100, bubbles: true }));
+  await new Promise((r) => setTimeout(r, 60));
+  report('C7 滚轮触发自动暂停', engine.getSnapshot().isPaused === true, 'isPaused=' + engine.getSnapshot().isPaused);
+
+  // ============ C8 组合键不接管 ============
+  engine.resumeScrolling();
+  await new Promise((r) => setTimeout(r, 60));
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true, bubbles: true }));
+  await new Promise((r) => setTimeout(r, 60));
+  report('C8 组合键不触发接管', engine.getSnapshot().isPaused === false);
+
+  // ============ C9 触底后进入 idle ============
+  engine.resumeScrolling();
+  // 直接跳到底部
+  const doc = document.scrollingElement;
+  doc.scrollTop = doc.scrollHeight;
+  await new Promise((r) => setTimeout(r, 300));
+  const snap1 = engine.getSnapshot();
+  report('C9 触底后进入 idle 阶段', snap1.phase === 'idle', 'phase=' + snap1.phase);
+
+  // ============ C10 idle 后不再高频驱动 ============
+  // 记录 1 秒内 scrollTop 写入次数：通过 MutationObserver 难以观测，
+  // 改为观察 phase 是否稳定在 idle 且 rAF 已停止（用 scrollTop 不再增长判断）
+  const before = doc.scrollTop;
+  await new Promise((r) => setTimeout(r, 1200));
+  const after = doc.scrollTop;
+  const snap2 = engine.getSnapshot();
+  report('C10 idle 期间保持静止', snap2.phase === 'idle' && Math.abs(after - before) < 50,
+    `phase=${snap2.phase}, 位移 ${Math.round(after - before)}px`);
+
+  // ============ C11 离开底部后 suspectedInfinite 复位 ============
+  // 场景：无限滚动页面被判为 suspectedInfinite 后，用户滚离底部，
+  // 判定必须作废，否则回顶循环在该页面此后永久失效。
+  engine.resumeScrolling();
+  engine.getState().suspectedInfinite = true;
+  doc.scrollTop = 0;
+  await new Promise((r) => setTimeout(r, 300));
+  const snap3 = engine.getSnapshot();
+  report('C11 离开底部后判定复位', snap3.suspectedInfinite === false,
+    'suspectedInfinite=' + snap3.suspectedInfinite);
+
+  // ============ C12 scroll-behavior 还原 ============
+  // 场景：页面自身设了 scroll-behavior: smooth，滚动期间应被覆盖为 auto，
+  // 停止后应完整还原为 smooth。
+  engine.stopScrolling();
+  document.documentElement.style.setProperty('scroll-behavior', 'smooth');
+  const before12 = document.documentElement.style.getPropertyValue('scroll-behavior');
+  engine.startScrolling();
+  const patched = document.documentElement.style.getPropertyValue('scroll-behavior');
+  engine.stopScrolling();
+  const restored = document.documentElement.style.getPropertyValue('scroll-behavior');
+  report('C12 scroll-behavior 正确还原', patched === 'auto' && restored === before12,
+    `滚动中=${patched}, 停止后=${restored}`);
+
+  // ============ 汇总 ============
+  const failed = results.filter((r) => !r.ok);
+  const summary = document.createElement('div');
+  summary.className = 'case ' + (failed.length ? 'fail' : 'pass');
+  summary.style.fontWeight = 'bold';
+  summary.textContent = `===== ${results.length - failed.length} passed, ${failed.length} failed =====`;
+  document.getElementById('results').appendChild(summary);
+  console.log(summary.textContent);
+}, 200);
+</script>
+</body>
+</html>

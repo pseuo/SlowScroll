@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>极长页面测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+        .section { margin-bottom: 100px; padding: 20px; border: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+    <h1>极长页面测试 - 漫卷 SlowScroll</h1>
+    <p>此页面用于测试滚动引擎的性能和到底部提示功能。</p>
+    
+    <script>
+        // 生成大量内容
+        for(let i = 1; i <= 100; i++) {
+            const section = document.createElement('div');
+            section.className = 'section';
+            section.innerHTML = `
+                <h2>第 ${i} 段内容</h2>
+                <p>这是第 ${i} 段测试内容。页面总共有100段，用于测试漫卷 SlowScroll在长页面上的表现。</p>
+                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+                <p>当前段落：${i}/100</p>
+            `;
+            document.body.appendChild(section);
+        }
+        
+        const footer = document.createElement('div');
+        footer.style.cssText = 'padding:50px; background:#f0f0f0; text-align:center; font-size:18px; font-weight:bold;';
+        footer.textContent = '已到达页面底部！';
+        document.body.appendChild(footer);
+    </script>
+</body>
+</html>

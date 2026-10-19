@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>悬浮条自动隐藏验证 · 漫卷 SlowScroll</title>
+<!-- 真实样式表：显隐依赖 CSS 过渡与 visibility，Node 桩无法验证 -->
+<link rel="stylesheet" href="../content/overlay.css">
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+  .section { margin-bottom: 100px; padding: 20px; border: 1px solid #ddd; }
+  .case { padding: 10px 14px; border-radius: 8px; font-family: ui-monospace, Consolas, monospace; font-size: 13px; margin: 8px 0; }
+  .pass { background: #EAF3DE; color: #173404; }
+  .fail { background: #FCEBEB; color: #501313; }
+</style>
+</head>
+<body>
+<h1>悬浮条自动隐藏验证</h1>
+<p>在真实 CSS 与真实布局下验证：开始滚动 → 收起 → 热区 / Esc 唤回 → 停止后不弹回。</p>
+
+<div id="results"></div>
+<div class="section" id="filler"></div>
+
+<script>
+// ---- 结果上报 ----
+const results = [];
+function report(name, ok, detail) {
+  results.push({ name, ok });
+  const el = document.createElement('div');
+  el.className = 'case ' + (ok ? 'pass' : 'fail');
+  el.textContent = (ok ? '✓ ' : '✗ ') + name + (detail ? ' — ' + detail : '');
+  document.getElementById('results').appendChild(el);
+  console.log(el.textContent);
+}
+window.__report = report;
+
+// ---- 扩展 API 桩 ----
+// overlay.js 依赖 chrome.storage / chrome.runtime，
+// 与真实扩展上下文保持同样的键名与回调形态
+window.chrome = {
+  runtime: {
+    lastError: null,
+    onMessage: { addListener: () => {} },
+    sendMessage: (msg, cb) => { if (typeof cb === 'function') cb({ ok: true }); },
+    getURL: (p) => p
+  },
+  storage: {
+    sync: {
+      get: (defaults, cb) => cb(defaults),
+      set: (vals, cb) => { if (typeof cb === 'function') cb(); }
+    },
+    onChanged: { addListener: () => {} }
+  }
+};
+
+// ---- 长页面 ----
+const filler = document.getElementById('filler');
+for (let i = 0; i < 60; i++) {
+  const d = document.createElement('div');
+  d.className = 'section';
+  d.textContent = '段落 ' + (i + 1);
+  filler.appendChild(d);
+}
+document.body.style.minHeight = '12000px';
+</script>
+
+<script src="../shared/constants.js"></script>
+<script src="../content/overlay.js"></script>
+<script src="../content/scrollEngine.js"></script>
+
+<script>
+const C = window.__SLOWSCROLL_CONSTANTS__;
+const engine = window.__slowScrollEngine;
+const overlay = window.__slowScrollOverlay;
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const root = document.getElementById('slowScroll-overlay');
+const panel = root ? root.querySelector('.panel') : null;
+const isHiddenClass = () => !!root && root.classList.contains('is-hidden');
+
+setTimeout(async () => {
+  // ============ H1 前置断言 ============
+  report('H1 悬浮条与面板已挂载', !!root && !!panel);
+  report('H2 常量已加载', !!C && C.OVERLAY_HIDE_DELAY_MS > 0,
+    'OVERLAY_HIDE_DELAY_MS=' + (C && C.OVERLAY_HIDE_DELAY_MS));
+  report('H3 初始为展开态', !isHiddenClass());
+  report('H4 自动隐藏默认开启', overlay.isAutoHideEnabled() === true);
+
+  // ============ H5 静止时保持展开 ============
+  await wait(C.OVERLAY_HIDE_DELAY_MS + 300);
+  report('H5 未滚动时不收起', !isHiddenClass(),
+    '等待 ' + (C.OVERLAY_HIDE_DELAY_MS + 300) + 'ms 后仍展开');
+
+  // ============ H6 开始滚动 → 延迟后收起 ============
+  engine.startScrolling();
+  // 收起前不应立即消失：延迟窗口内必须仍可见
+  await wait(200);
+  report('H6 收起有延迟保护', !isHiddenClass(),
+    '滚动开始 200ms 时仍展开（延迟 ' + C.OVERLAY_HIDE_DELAY_MS + 'ms）');
+
+  await wait(C.OVERLAY_HIDE_DELAY_MS + 400);
+  report('H7 滚动中自动收起', isHiddenClass(),
+    '滚动 ' + (C.OVERLAY_HIDE_DELAY_MS + 600) + 'ms 后已收起');
+
+  // ============ H8 收起态计算样式 ============
+  // visibility 必须为 hidden：否则键盘 Tab 会落进看不见的控件
+  const cs = getComputedStyle(panel);
+  report('H8 收起态 opacity 为 0', Number(cs.opacity) === 0, 'opacity=' + cs.opacity);
+  report('H9 收起态 visibility 为 hidden', cs.visibility === 'hidden',
+    'visibility=' + cs.visibility);
+  report('H10 收起态不接受指针事件', cs.pointerEvents === 'none',
+    'pointer-events=' + cs.pointerEvents);
+
+  // ============ H11 热区唤回 ============
+  // 从区域外移入右下角，触发「刚进入热区」的跳变判定
+  window.dispatchEvent(new MouseEvent('mousemove', {
+    clientX: 10, clientY: 10, bubbles: true
+  }));
+  await wait(30);
+  report('H11 区域外移动不唤回', isHiddenClass());
+
+  window.dispatchEvent(new MouseEvent('mousemove', {
+    clientX: window.innerWidth - 4,
+    clientY: window.innerHeight - 4,
+    bubbles: true
+  }));
+  await wait(60);
+  report('H12 移入右下角热区即唤回', !isHiddenClass());
+
+  // ============ H13 再次收起需要移开并等待 ============
+  // 指针仍在热区内，不能立刻重新收起，否则用户刚唤回就被抽走
+  await wait(C.OVERLAY_REHIDE_IDLE_MS + 300);
+  report('H13 指针留在热区时不二次收起', !isHiddenClass(),
+    '热区内等待 ' + (C.OVERLAY_REHIDE_IDLE_MS + 300) + 'ms 仍展开');
+
+  // ============ H13b 悬停在控制条上同样不收起 ============
+  // 回归缺陷：此前只看 panel 的 mouseenter（hovered），
+  // 鼠标停在热区唤回后 hovered 为 false，2.5s 后控制条会在用户
+  // 手底下自行消失——明明压着它，却什么都点不到
+  panel.dispatchEvent(new MouseEvent('mouseenter'));
+  await wait(C.OVERLAY_REHIDE_IDLE_MS + 300);
+  report('H13b 悬停控制条时不收起', !isHiddenClass(),
+    'hover ' + (C.OVERLAY_REHIDE_IDLE_MS + 300) + 'ms 仍展开');
+  panel.dispatchEvent(new MouseEvent('mouseleave'));
+
+  // 移出热区且不悬停在面板上 → 到点收起
+  window.dispatchEvent(new MouseEvent('mousemove', {
+    clientX: 10, clientY: 10, bubbles: true
+  }));
+  await wait(C.OVERLAY_REHIDE_IDLE_MS + 400);
+  report('H14 移开后到点二次收起', isHiddenClass());
+
+  // ============ H15 Esc 唤回 ============
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await wait(60);
+  report('H15 Esc 可唤回', !isHiddenClass());
+
+  // ============ H16 停止滚动后不主动弹回 ============
+  // 停止意味着用户接管，此刻弹回等于打断阅读
+  window.dispatchEvent(new MouseEvent('mousemove', {
+    clientX: 10, clientY: 10, bubbles: true
+  }));
+  await wait(C.OVERLAY_REHIDE_IDLE_MS + 400);
+  engine.stopScrolling();
+  overlay.revealOverlay();
+  await wait(C.OVERLAY_HIDE_DELAY_MS + 400);
+  report('H16 停止滚动后保持展开', !isHiddenClass(),
+    '停止后不再自动收起');
+
+  // ============ H17 关闭自动隐藏 ============
+  overlay.setAutoHideEnabled(false);
+  engine.startScrolling();
+  await wait(C.OVERLAY_HIDE_DELAY_MS + 400);
+  report('H17 关闭后滚动不收起', !isHiddenClass() && overlay.isAutoHideEnabled() === false);
+  engine.stopScrolling();
+
+  // ============ H18 卸载清理定时器 ============
+  // 卸载后残留计时器会对已移除的 DOM 执行 class 切换
+  overlay.setAutoHideEnabled(true);
+  engine.startScrolling();
+  overlay.teardownOverlay();
+  await wait(C.OVERLAY_HIDE_DELAY_MS + 400);
+  report('H18 卸载后无残留异常',
+    !document.getElementById('slowScroll-overlay'),
+    'teardown 后控制条已移除且未抛错');
+
+  // ============ 汇总 ============
+  const failed = results.filter((r) => !r.ok);
+  const summary = document.createElement('div');
+  summary.className = 'case ' + (failed.length ? 'fail' : 'pass');
+  summary.style.fontWeight = 'bold';
+  summary.textContent = `===== ${results.length - failed.length} passed, ${failed.length} failed =====`;
+  document.getElementById('results').appendChild(summary);
+  console.log(summary.textContent);
+}, 300);
+</script>
+</body>
+</html>
