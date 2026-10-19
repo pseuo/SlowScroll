@@ -1,0 +1,66 @@
+# 漫卷 SlowScroll · 流水线
+#
+# 存在的理由只有一个：让 `npm run ci` 的七环节在 push / PR 上被真正执行，
+# 尤其是「浏览器真实行为」这一层。它在 Node 桩里跑不出真实 CSS 过渡、
+# 真实布局坐标与真实视口取值，而缺依赖时静默跳过是流水线里最危险的绿灯
+# ——看起来全过，实际有一整层根本没跑。run_browser_check.js 检测到
+# CI / GITHUB_ACTIONS 即自动切强制模式，本文件不传 --require 就是靠这个。
+#
+# 本项目 package.json 是零依赖的（不写 dependencies / devDependencies），
+# playwright 仅 CI 需要，故用 `npm i --no-save` 就地安装：
+# 装进本仓库 node_modules，Node 的 require 解析链能直接命中；
+# 换成 `npm install -g playwright` 会装到全局目录，require 找不到，
+# 直接触发「未安装 playwright」而失败。
+
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+# 同一分支的新 push 取消仍在跑的旧任务，避免并发互抢 CPU
+# 让依赖真实计时的浏览器断言假失败。
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: 七环节校验
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # playwright 自带 chromium，版本与库严格匹配。
+      # 绝不能只装本机 Chrome —— CI 上没有 Chrome，
+      # 那种配置即使装了 playwright 也会被判「未找到浏览器」。
+      - name: 安装 playwright 与 chromium
+        run: |
+          npm i --no-save playwright
+          npx playwright install --with-deps chromium
+
+      # lint → 引擎 → 清单 → 对比度 → 界面 → 浏览器（强制）→ 构建
+      # 任一环节失败即中止并以非零码退出。
+      - name: 运行 npm run ci
+        run: npm run ci
+
+      # 产物 zip 顺手上传，方便直接从 Actions 页面下载安装包。
+      # 放在 ci 之后：构建失败时本就没有可信产物，不做无意义上传。
+      - name: 上传扩展 zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-zip
+          path: dist/*.zip
+          if-no-files-found: warn
+          retention-days: 14
